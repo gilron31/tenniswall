@@ -8,16 +8,36 @@ DEFAULT_RECORDING_DURATION_S = 10
 STFT_N_SAMPLES_PER_SEG = 100
 STFT_OVERLAP_PER_SEG = 90
 STFT_HPF_BIN_THRES = 3
+DELIMITER = ','
 
-def record_signal_with_sounddevice(fs, duration):
+def record_signal_with_sounddevice(fileName,fs = BASE_SAMPLE_FREQUENCY_HZ, duration=DEFAULT_RECORDING_DURATION_S):
 	input(f"Will start recording for {duration} seconds")
 	s = sd.rec(fs*duration, fs, channels = 1)
 	sd.wait()
-	t = np.linspace(0, duration, fs*duration)
 	print("Done recording")
-	return t, [x[0] for x in s] #sd returns a vector of singletons, reformatting. 
+	t = np.linspace(0, duration, fs*duration)
+	np.savetxt(fileName,s,delimiter = DELIMITER)
 
-def detect_bangs(s, fs, duration):
+def findContinuousHigh(sig,cutoff,amountOfSamplesRequired):
+    highsFound = []
+    amountAbove = 0
+    for sampleInd,sample in enumerate(sig):
+        if sample > cutoff:
+            amountAbove += 1
+            if amountAbove == amountOfSamplesRequired:
+                highsFound.append(sampleInd - amountOfSamplesRequired)
+                amountAbove = 0
+        else:
+            amountAbove = 0
+    return highsFound
+
+def putPeakLines(sig,cutoff,amountOfSamplesRequired):
+	peaks = findContinuousHigh(sig,cutoff,amountOfSamplesRequired)
+	for peak in peaks:
+		plt.axvline(peak,color='r')
+
+def detect_bangs(fileName,fs = BASE_SAMPLE_FREQUENCY_HZ, duration=DEFAULT_RECORDING_DURATION_S):
+	s = np.genfromtxt(fileName,delimiter = DELIMITER)
 	assert(len(s) == fs*duration)
 
 	f, t, zxx = signal.stft(s, fs, nperseg = STFT_N_SAMPLES_PER_SEG, noverlap = STFT_OVERLAP_PER_SEG)
@@ -26,15 +46,18 @@ def detect_bangs(s, fs, duration):
 	## this is for testing, in the end the function should return timestamps
 	plt.figure()
 	plt.subplot(2,1,1)
-	plt.plot(t, hpf_power_signal)
+	plt.plot(hpf_power_signal)
+	# You need to insert a cutoff and amountOfSamples according to the behaviour
+	putPeakLines(hpf_power_signal,cutoff = 0.5,amountOfSamplesRequired= 10)
 	plt.subplot(2,1,2)
-	plt.plot(np.linspace(0, duration, fs*duration), s)
+	plt.plot(s)
+	# You need to insert a cutoff and amountOfSamples according to the behaviour
+	putPeakLines(s,cutoff = 0.5,amountOfSamplesRequired= 10)
 	plt.show()
 
 
 
 
-
 if __name__ == "__main__":
-	t, s = record_signal_with_sounddevice(BASE_SAMPLE_FREQUENCY_HZ, DEFAULT_RECORDING_DURATION_S)
-	detect_bangs(s, BASE_SAMPLE_FREQUENCY_HZ, DEFAULT_RECORDING_DURATION_S)
+	# record_signal_with_sounddevice('3clapsGil.csv')
+	detect_bangs('3clapsGil.csv')
