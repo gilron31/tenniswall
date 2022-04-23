@@ -74,14 +74,16 @@ class TennisClient(object):
 		print("Done recording")
 		rec_flattened = [x[0] for x in rec]
 
-		time_data = struct.pack("I", timestamp)
+		time_data = struct.pack("L", timestamp)
 		sound_data = struct.pack(f"{len(rec_flattened)}f", *rec_flattened)
-		data_packet = time_data + sound_data
-
-		# DUMMY_DATA = b'BENCHOOK'
-		# data = DUMMY_DATA * self.duration
-		print(f"sending {len(data_packet)} bytes of data to server")
-		self.socket.sendall(data_packet)
+		timestamp_and_sound = time_data + sound_data
+		packet_length = len(timestamp_and_sound)
+		packed_packet_length = struct.pack("I", packet_length)
+		print("sending packet_length")
+		self.socket.sendall(packed_packet_length)
+		print(f"sending {len(timestamp_and_sound)} bytes of data to server")
+		self.socket.sendall(timestamp_and_sound)
+		
 		self.state = ClientStates.IDLE
 		sd.play(rec, samplerate = self.BASE_SAMPLE_FREQUENCY_HZ)
 

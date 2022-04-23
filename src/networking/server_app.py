@@ -134,7 +134,7 @@ class TennisServer(object):
 		
 	
 	def idle(self):
-		user_response = input(SERVER_IDLE_MESSAGE)
+		user_response = input(SERVER_IDLE_MESSAGE).upper()
 		if user_response == 'D':
 			print(f"Paired Clients are: {self.clients}")
 		elif user_response == 'R':
