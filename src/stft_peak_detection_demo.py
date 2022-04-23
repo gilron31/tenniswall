@@ -142,6 +142,6 @@ def slidersForParameters(fileName,fs = BASE_SAMPLE_FREQUENCY_HZ, duration=DEFAUL
  
 	
 if __name__ == "__main__":
-	# record_signal_with_sounddevice('3clapsGil.csv')
+	# record_signal_with_sounddevice('10BallsOnWalls.csv')
 	# detect_bangs('5ballsOnWall.csv')
-	slidersForParameters('5ballsOnWall.csv')
+	slidersForParameters('10BallsOnWalls.csv')
