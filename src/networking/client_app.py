@@ -5,6 +5,7 @@ import sys
 import sounddevice as sd
 from time import time_ns
 
+
 class ClientStates(Enum):
 	STARTUP_UNCONNECTED = 1
 	ERROR = 2
@@ -65,9 +66,6 @@ class TennisClient(object):
 			print("Timeout")
 			self.state = ClientStates.IDLE
 
-		
-
-
 	def record_and_send(self):
 		print(f"Recording {self.duration} seconds")
 		timestamp = time_ns()
@@ -94,6 +92,7 @@ def main():
 		return
 	tc = TennisClient(sys.argv[1], int(sys.argv[2]), sys.argv[3], int(sys.argv[4]))
 	tc.start()
+
 
 if __name__ == '__main__':
 	main()
