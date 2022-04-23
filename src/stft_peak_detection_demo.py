@@ -18,7 +18,7 @@ def record_signal_with_sounddevice(fileName,fs = BASE_SAMPLE_FREQUENCY_HZ, durat
 	t = np.linspace(0, duration, fs*duration)
 	np.savetxt(fileName,s,delimiter = DELIMITER)
 
-def findContinuousHigh(sig,cutoff,amountOfSamplesRequired,amountOfStrikesAllowed):
+def findContinuousHigh(sig,cutoff,amountOfSamplesRequired,amountOfStrikesAllowed,minTimeBetweenPeaks):
 	highsFound = []
 	amountAbove = 0
 	curAmountOfStrikes = amountOfStrikesAllowed
@@ -26,7 +26,9 @@ def findContinuousHigh(sig,cutoff,amountOfSamplesRequired,amountOfStrikesAllowed
 		if sample > cutoff:
 			amountAbove += 1
 			if amountAbove == amountOfSamplesRequired:
-				highsFound.append(sampleInd - amountOfSamplesRequired - (amountOfStrikesAllowed - curAmountOfStrikes)+1)
+				peakInd = sampleInd - amountOfSamplesRequired - (amountOfStrikesAllowed - curAmountOfStrikes)+1
+				if len(highsFound) == 0 or peakInd - highsFound[-1] > minTimeBetweenPeaks: 
+					highsFound.append(sampleInd - amountOfSamplesRequired - (amountOfStrikesAllowed - curAmountOfStrikes)+1)
 				amountAbove = 0
 				curAmountOfStrikes = amountOfStrikesAllowed
 		else:
@@ -36,8 +38,8 @@ def findContinuousHigh(sig,cutoff,amountOfSamplesRequired,amountOfStrikesAllowed
 				curAmountOfStrikes = amountOfStrikesAllowed
 	return highsFound
 
-def putPeakLines(sig,cutoff,amountOfSamplesRequired,amountOfStrikesAllowed = 0):
-	peaks = findContinuousHigh(sig,cutoff,amountOfSamplesRequired,amountOfStrikesAllowed)
+def putPeakLines(sig,cutoff,amountOfSamplesRequired,amountOfStrikesAllowed = 0,minTimeBetweenPeaks = -1):
+	peaks = findContinuousHigh(sig,cutoff,amountOfSamplesRequired,amountOfStrikesAllowed,minTimeBetweenPeaks)
 	plt.axhline(cutoff,color='r')
 	for peak in peaks:
 		plt.axvline(peak,color='r')
@@ -55,11 +57,11 @@ def detect_bangs(fileName,fs = BASE_SAMPLE_FREQUENCY_HZ, duration=DEFAULT_RECORD
 	plt.subplot(2,1,1)
 	plt.plot(hpf_power_signal,'o')
 	# You need to insert a cutoff and amountOfSamples according to the behaviour
-	putPeakLines(hpf_power_signal,cutoff = 0.1,amountOfSamplesRequired= 10,amountOfStrikesAllowed=3)
+	putPeakLines(hpf_power_signal,cutoff = 0.1,amountOfSamplesRequired= 10,amountOfStrikesAllowed=3,minTimeBetweenPeaks=1000)
 	plt.subplot(2,1,2)
 	plt.plot(energy_no_hpf,'o')
 	# You need to insert a cutoff and amountOfSamples according to the behaviour
-	putPeakLines(energy_no_hpf,cutoff = 0.1,amountOfSamplesRequired= 10,amountOfStrikesAllowed=3)
+	putPeakLines(energy_no_hpf,cutoff = 0.1,amountOfSamplesRequired= 10,amountOfStrikesAllowed=3,minTimeBetweenPeaks=1000)
 	plt.show()
 
 
