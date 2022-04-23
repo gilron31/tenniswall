@@ -52,7 +52,7 @@ def detect_bangs(fileName,ax,fs = BASE_SAMPLE_FREQUENCY_HZ, duration=DEFAULT_REC
 	s = np.genfromtxt(fileName,delimiter = DELIMITER)
 	assert(len(s) == fs*duration)
 
-	f, t, zxx = signal.stft(s, fs, nperseg = STFT_N_SAMPLES_PER_SEG, noverlap = STFT_OVERLAP_PER_SEG)
+	f, t, zxx = signal.stft(s, fs, nperseg = STFT_N_SAMPLES_PER_SEG/10, noverlap = STFT_OVERLAP_PER_SEG)
 	hpf_power_signal = np.sum(abs(zxx[STFT_HPF_BIN_THRES:])**2, axis = 0)
 	energy_no_hpf = np.sum(abs(zxx)**2, axis = 0)
 
