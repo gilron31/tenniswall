@@ -5,9 +5,13 @@ import sys
 import select
 from threading import Thread
 
-SERVER_IDLE_MESSAGE = "\nServer is now idle.\nOptions: " \
-					  "\nD - display paired clients\nR - send recording request to clients\n"
 
+SERVER_IDLE_MESSAGE = """\nServer is now idle.
+Options: 
+D - display paired clients
+R - send recording request to clients
+Q - Close socket and quit
+"""
 
 class ServerStates(Enum):
 	STARTUP = 1
@@ -15,7 +19,7 @@ class ServerStates(Enum):
 	IDLE = 3
 	WAITING_FOR_CLIENTS_RESPONSE = 4
 	SENDING_INSTRUCTIONS_TO_CLIENTS = 5
-
+	QUIT = 6
 
 class TennisServer(object):
 	SERVER_TIMEOUT_S = 10
@@ -108,6 +112,7 @@ class TennisServer(object):
 
 			for exceptional_socket in exceptional:
 				self.manage_exceptional_socket(exceptional_socket)
+			break
 
 	def run(self):
 		print(self)
@@ -122,8 +127,11 @@ class TennisServer(object):
 				pass
 			elif self.state == ServerStates.SENDING_INSTRUCTIONS_TO_CLIENTS:
 				self.send_instructions_to_clients()
+			elif self.state == ServerStates.QUIT:
+				break
 			else:
 				pass
+		
 	
 	def idle(self):
 		user_response = input(SERVER_IDLE_MESSAGE)
@@ -131,6 +139,10 @@ class TennisServer(object):
 			print(f"Paired Clients are: {self.clients}")
 		elif user_response == 'R':
 			self.state = ServerStates.SENDING_INSTRUCTIONS_TO_CLIENTS
+		elif user_response == 'Q':
+			print("Closing socket")
+			self.socket.close()
+			self.state = ServerStates.QUIT
 		else:
 			print(f"Invalid option chosen! - {user_response}")
 

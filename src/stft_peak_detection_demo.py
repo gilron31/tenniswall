@@ -3,7 +3,7 @@ import matplotlib.pyplot as plt
 from scipy import signal
 import sounddevice as sd
 
-BASE_SAMPLE_FREQUENCY_HZ = 44100
+BASE_SAMPLE_FREQUENCY_HZ = 44100*8
 DEFAULT_RECORDING_DURATION_S = 10
 STFT_N_SAMPLES_PER_SEG = 100
 STFT_OVERLAP_PER_SEG = 90
@@ -26,9 +26,9 @@ def detect_bangs(s, fs, duration):
 	## this is for testing, in the end the function should return timestamps
 	plt.figure()
 	plt.subplot(2,1,1)
-	plt.plot(t, hpf_power_signal)
+	plt.plot(t, hpf_power_signal, 'x')
 	plt.subplot(2,1,2)
-	plt.plot(np.linspace(0, duration, fs*duration), s)
+	plt.plot(np.linspace(0, duration, fs*duration), s, 'x')
 	plt.show()
 
 

@@ -3,6 +3,7 @@ from enum import Enum
 import struct
 import sys
 import sounddevice as sd
+from time import time_ns
 
 
 class ClientStates(Enum):
@@ -66,19 +67,23 @@ class TennisClient(object):
 			self.state = ClientStates.IDLE
 
 	def record_and_send(self):
-		# print(f"Recording {self.duration} seconds")
-		# rec = sd.rec(self.duration*self.BASE_SAMPLE_FREQUENCY_HZ, samplerate = self.BASE_SAMPLE_FREQUENCY_HZ, channels = 1)
-		# sd.wait()
-		# print("Done recording")
-		# rec_flattened = [x[0] for x in rec]
+		print(f"Recording {self.duration} seconds")
+		timestamp = time_ns()
+		rec = sd.rec(self.duration*self.BASE_SAMPLE_FREQUENCY_HZ, samplerate = self.BASE_SAMPLE_FREQUENCY_HZ, channels = 1)
+		sd.wait()
+		print("Done recording")
+		rec_flattened = [x[0] for x in rec]
 
-		# data = struct.pack(f"{len(rec_flattened)}f", rec_flattened)
-		DUMMY_DATA = b'BENCHOOK'
-		data = DUMMY_DATA * self.duration
-		print(f"sending {len(data)} bytes of data to server")
-		self.socket.sendall(data)
+		time_data = struct.pack("I", timestamp)
+		sound_data = struct.pack(f"{len(rec_flattened)}f", *rec_flattened)
+		data_packet = time_data + sound_data
+
+		# DUMMY_DATA = b'BENCHOOK'
+		# data = DUMMY_DATA * self.duration
+		print(f"sending {len(data_packet)} bytes of data to server")
+		self.socket.sendall(data_packet)
 		self.state = ClientStates.IDLE
-		# sd.play(rec, samplerate = self.BASE_SAMPLE_FREQUENCY_HZ)
+		sd.play(rec, samplerate = self.BASE_SAMPLE_FREQUENCY_HZ)
 
 
 def main():
