@@ -74,7 +74,7 @@ class TennisClient(object):
 		print("Done recording")
 		rec_flattened = [x[0] for x in rec]
 
-		time_data = struct.pack("L", timestamp)
+		time_data = struct.pack("Q", timestamp)
 		sound_data = struct.pack(f"{len(rec_flattened)}f", *rec_flattened)
 		timestamp_and_sound = time_data + sound_data
 		packet_length = len(timestamp_and_sound)
@@ -85,8 +85,6 @@ class TennisClient(object):
 		self.socket.sendall(timestamp_and_sound)
 		
 		self.state = ClientStates.IDLE
-		sd.play(rec, samplerate = self.BASE_SAMPLE_FREQUENCY_HZ)
-
 
 def main():
 	if(len(sys.argv) != 5):

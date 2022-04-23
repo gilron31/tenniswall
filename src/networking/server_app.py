@@ -5,7 +5,7 @@ import sys
 import select
 from threading import Thread
 from collections import deque
-
+import sounddevice as sd
 
 
 SERVER_IDLE_MESSAGE = """\nServer is now idle.
@@ -14,6 +14,10 @@ D - display paired clients
 R - send recording request to clients
 Q - Close socket and quit
 """
+
+NUMBER_FORMAT_BYTE_LENGTH = 4
+TIMESTAMP_PACKING_NUMBER_OF_BYTES = 2 * NUMBER_FORMAT_BYTE_LENGTH
+BASE_SAMPLE_FREQUENCY_HZ = 44100
 
 class ServerStates(Enum):
 	STARTUP = 1
@@ -64,7 +68,8 @@ class TennisServer(object):
 			if socket not in self.parse_sound_ready_sockets:
 				self.parse_sound_ready_sockets.append(socket)
 
-	def manage_sound_packet(self, socket):
+	@staticmethod
+	def manage_sound_packet(socket):
 		"""
 		Will parse and extract sound packet from read ready socket
 		:param socket: socket to read sound from
@@ -74,9 +79,17 @@ class TennisServer(object):
 		4 bytes - timestamp
 		all the rest - the sound data from the client
 
-		:return: None
+		:return: tuple of timestamp and received data
 		"""
+		packet_length = socket.recv(NUMBER_FORMAT_BYTE_LENGTH)
+		packet_length = struct.unpack("L", packet_length)[0]
+		timestamp = socket.recv(TIMESTAMP_PACKING_NUMBER_OF_BYTES)
+		timestamp = struct.unpack("Q", timestamp)[0]
+		data_length = packet_length - TIMESTAMP_PACKING_NUMBER_OF_BYTES
+		data = socket.recv(data_length)
+		data = struct.unpack(f"{int(len(data) / 4)}f", data)
 
+		return timestamp, data
 
 	def manage_writable_socket(self, socket):
 		"""
@@ -113,7 +126,6 @@ class TennisServer(object):
 		"""
 		while self.inputs:
 			readable, writable, exceptional = select.select(self.inputs, self.outputs, self.inputs)
-
 			for readable_socket in readable:
 				self.manage_readable_socket(readable_socket)
 
@@ -122,7 +134,6 @@ class TennisServer(object):
 
 			for exceptional_socket in exceptional:
 				self.manage_exceptional_socket(exceptional_socket)
-			break
 
 	def run(self):
 		print(self)
@@ -136,6 +147,7 @@ class TennisServer(object):
 				print("ERROR!")
 			elif self.state == ServerStates.WAITING_FOR_CLIENTS_RESPONSE:
 				client_answers = self.wait_for_clients_response()
+				self.process_client_response_dict(client_answers)
 
 			elif self.state == ServerStates.SENDING_INSTRUCTIONS_TO_CLIENTS:
 				self.send_instructions_to_clients()
@@ -143,6 +155,17 @@ class TennisServer(object):
 				break
 			else:
 				pass
+
+	def process_client_response_dict(self, response_dict):
+		"""
+		Will process and play clients responses
+		:param response_dict: dict mapping each client to its response
+		:return: None
+		"""
+		# play the records:
+		for response in response_dict.values():
+			sd.play(response[1], samplerate=BASE_SAMPLE_FREQUENCY_HZ)
+
 
 	def get_client_by_socket(self, socket):
 		"""
