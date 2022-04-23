@@ -3,6 +3,8 @@ from enum import Enum
 import struct
 import sys
 import sounddevice as sd
+import numpy as np
+from matplotlib import pyplot as plt
 
 class ClientStates(Enum):
 	STARTUP_UNCONNECTED = 1
@@ -71,14 +73,17 @@ class TennisClient(object):
 		print(f"Recording {self.duration} seconds")
 		rec = sd.rec(self.duration*self.BASE_SAMPLE_FREQUENCY_HZ, samplerate = self.BASE_SAMPLE_FREQUENCY_HZ, channels = 1)
 		sd.wait()
+		plt.plot(rec)
+		plt.show()
 		print("Done recording")
+		print(np.median(rec))
 		rec_flattened = [x[0] for x in rec]
 
 		data = struct.pack(f"{len(rec_flattened)}f", *rec_flattened)
 		# DUMMY_DATA = b'BENCHOOK'
 		# data = DUMMY_DATA * self.duration
 		print(f"sending {len(data)} bytes of data to server")
-		self.socket.sendall(data)
+		self.socket.sendall(data[:3])
 		self.state = ClientStates.IDLE
 		sd.play(rec, samplerate = self.BASE_SAMPLE_FREQUENCY_HZ)
 

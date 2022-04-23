@@ -24,20 +24,66 @@ def findPeaks(sig,cutoff,amountOfSamplesRequired,amountOfStrikesAllowed,minTimeB
 	highsFound = []
 	amountAbove = 0
 	curAmountOfStrikes = amountOfStrikesAllowed
-	for sampleInd,sample in enumerate(sig):
-		if sample > cutoff:
+	checkPoints = []
+	lastWasBad = False
+	amountAboveInRow = 0
+	amountBelowInRow = 0
+	curCandidate = 0
+	sampleInd = 0
+	# for sampleInd,sample in enumerate(sig): #TODO: Change this so it will start looking after place of fail
+	while sampleInd < len(sig): #Check that your pointer is still in the bounds of the array.
+		sample = sig[sampleInd] #Get the sample at that point
+		if sample > cutoff: #If the point is good
+			if lastWasBad: #If the last point was bad we have a transition and a new possible checkpoint
+				checkPoints.append([amountAboveInRow,amountBelowInRow])
+				amountAboveInRow = 0
+				amountBelowInRow = 0
+				lastWasBad = False
+			amountAboveInRow += 1
 			amountAbove += 1
-			if amountAbove == amountOfSamplesRequired:
-				peakInd = sampleInd - amountOfSamplesRequired - (amountOfStrikesAllowed - curAmountOfStrikes)+1
-				if len(highsFound) == 0 or peakInd - highsFound[-1] > minTimeBetweenPeaks: 
-					highsFound.append(sampleInd - amountOfSamplesRequired - (amountOfStrikesAllowed - curAmountOfStrikes)+1)
+			if amountAbove == amountOfSamplesRequired: #This means our candidate is good!
+				highsFound.append(curCandidate) #Inserting the candidate
+				
+				#Updating the candidate and the sampleInd
+				sampleInd += 1
+				if minTimeBetweenPeaks > 0:
+					sampleInd += minTimeBetweenPeaks - 1
+
+				#Cleaning everything
+				checkPoints = []
 				amountAbove = 0
+				amountAboveInRow = 0
+				amountBelowInRow = 0
 				curAmountOfStrikes = amountOfStrikesAllowed
-		else:
-			curAmountOfStrikes -= 1
-			if curAmountOfStrikes < 0 or amountAbove == 0:
-				amountAbove = 0
-				curAmountOfStrikes = amountOfStrikesAllowed
+				curCandidate = sampleInd
+			else: #Need to get more goods in order to succeed
+				sampleInd += 1
+		else: #If current point is bad
+			lastWasBad = True
+			#Adjusting the variables
+			amountBelowInRow += 1
+			sampleInd += 1
+			curAmountOfStrikes -= 1 #You lose a strike
+
+			if curAmountOfStrikes < 0: #If you're out of strikes
+				while True:
+					if len(checkPoints) > 0: #If there are possible checkpoints
+						amountAboveLost,amountBelowLost = checkPoints.pop(0)
+						amountAbove -= amountAboveLost #You lose the amount of good points if you skip this checkpoint
+						assert amountAbove >= 0 #This is supposed to always be true
+						curAmountOfStrikes += amountBelowLost #You gain strikes by removing the bad points in this checkpoint.
+						curCandidate += amountAboveLost + amountBelowLost #This is the new candidate
+						if curAmountOfStrikes >= 0:
+							break
+					else: #If there aren't possible checkpoints
+						#Cleaning everything
+						checkPoints = []
+						amountAbove = 0
+						amountAboveInRow = 0
+						amountBelowInRow = 0
+						curAmountOfStrikes = amountOfStrikesAllowed
+						curCandidate = sampleInd
+						break
 	return highsFound
 
 def putPeakLines(ax,sig,cutoff,amountOfSamplesRequired,amountOfStrikesAllowed = 0,minTimeBetweenPeaks = -1):
@@ -52,7 +98,7 @@ def detect_bangs(fileName,ax,fs = BASE_SAMPLE_FREQUENCY_HZ, duration=DEFAULT_REC
 	s = np.genfromtxt(fileName,delimiter = DELIMITER)
 	assert(len(s) == fs*duration)
 
-	f, t, zxx = signal.stft(s, fs, nperseg = STFT_N_SAMPLES_PER_SEG/10, noverlap = STFT_OVERLAP_PER_SEG)
+	f, t, zxx = signal.stft(s, fs, nperseg = STFT_N_SAMPLES_PER_SEG, noverlap = STFT_OVERLAP_PER_SEG//10)
 	hpf_power_signal = np.sum(abs(zxx[STFT_HPF_BIN_THRES:])**2, axis = 0)
 	energy_no_hpf = np.sum(abs(zxx)**2, axis = 0)
 
@@ -72,7 +118,7 @@ def detect_bangs(fileName,ax,fs = BASE_SAMPLE_FREQUENCY_HZ, duration=DEFAULT_REC
 def slidersForParameters(fileName,fs = BASE_SAMPLE_FREQUENCY_HZ, duration=DEFAULT_RECORDING_DURATION_S):
 	s = np.genfromtxt(fileName,delimiter = DELIMITER)
 
-	f, t, zxx = signal.stft(s, fs, nperseg = STFT_N_SAMPLES_PER_SEG, noverlap = STFT_OVERLAP_PER_SEG)
+	f, t, zxx = signal.stft(s, fs, nperseg = STFT_N_SAMPLES_PER_SEG, noverlap = STFT_OVERLAP_PER_SEG//10)
 	s = np.sum(abs(zxx[STFT_HPF_BIN_THRES:])**2, axis = 0)
 	# energy_no_hpf = np.sum(abs(zxx)**2, axis = 0)
 
@@ -80,7 +126,7 @@ def slidersForParameters(fileName,fs = BASE_SAMPLE_FREQUENCY_HZ, duration=DEFAUL
 	ax.plot(s,'o')
 	init_cutoff = np.median(s) / 2
 	init_amountOfSamples = 20
-	init_amountOfStrikes = 3
+	init_amountOfStrikes = 0.03
 	init_minTimeBetweenPeaks = 1000
 	fig.subplots_adjust(bottom=0.21)
 
@@ -107,7 +153,7 @@ def slidersForParameters(fileName,fs = BASE_SAMPLE_FREQUENCY_HZ, duration=DEFAUL
 		ax=axamountOfStrikes,
 		label='Amount of Strikes',
 		valmin=0,
-		valmax=50,
+		valmax=1,
 		valinit=init_amountOfStrikes,
 	)
 
@@ -117,7 +163,7 @@ def slidersForParameters(fileName,fs = BASE_SAMPLE_FREQUENCY_HZ, duration=DEFAUL
 		lines.hor_line.remove()
 		for vert_line in lines.vert_lines:
 			vert_line.remove()
-		lines.hor_line,lines.vert_lines = putPeakLines(ax,s,cutoff_slider.val,int(amountOfSamples_slider.val),int(amountOfStrikes_slider.val),init_minTimeBetweenPeaks)
+		lines.hor_line,lines.vert_lines = putPeakLines(ax,s,cutoff_slider.val,int(amountOfSamples_slider.val),int(amountOfStrikes_slider.val * amountOfSamples_slider.val),init_minTimeBetweenPeaks)
 
 	saveax = plt.axes([0.35, 0.9, 0.3, 0.04])
 	button = Button(saveax, 'Save Parameters', hovercolor='0.975')
@@ -142,6 +188,6 @@ def slidersForParameters(fileName,fs = BASE_SAMPLE_FREQUENCY_HZ, duration=DEFAUL
  
 	
 if __name__ == "__main__":
-	# record_signal_with_sounddevice('10BallsOnWalls.csv')
+	# record_signal_with_sounddevice('5BallsOnWalls8XFs.csv',fs=BASE_SAMPLE_FREQUENCY_HZ*8)
 	# detect_bangs('5ballsOnWall.csv')
-	slidersForParameters('10BallsOnWalls.csv')
+	slidersForParameters('5BallsOnWalls8XFs.csv',fs = BASE_SAMPLE_FREQUENCY_HZ *8)

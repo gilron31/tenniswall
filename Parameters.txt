@@ -1,0 +1,3 @@
+cutoff = 0.00041721261557621373
+amountOfSamples = 20
+amountOfStrikes = 3
