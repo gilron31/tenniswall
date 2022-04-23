@@ -22,14 +22,15 @@ def record_signal_with_sounddevice(fileName,fs = BASE_SAMPLE_FREQUENCY_HZ, durat
 
 def findPeaks(sig,cutoff,amountOfSamplesRequired,amountOfStrikesAllowed,minTimeBetweenPeaks):
 	highsFound = []
-	amountAbove = 0
-	curAmountOfStrikes = amountOfStrikesAllowed
-	checkPoints = []
+	sampleInd = 0
 	lastWasBad = False
+	#Cleaning everything
+	checkPoints = []
+	amountAbove = 0
 	amountAboveInRow = 0
 	amountBelowInRow = 0
-	curCandidate = 0
-	sampleInd = 0
+	curAmountOfStrikes = amountOfStrikesAllowed
+	curCandidate = sampleInd
 	# for sampleInd,sample in enumerate(sig): #TODO: Change this so it will start looking after place of fail
 	while sampleInd < len(sig): #Check that your pointer is still in the bounds of the array.
 		sample = sig[sampleInd] #Get the sample at that point
@@ -118,7 +119,7 @@ def detect_bangs(fileName,ax,fs = BASE_SAMPLE_FREQUENCY_HZ, duration=DEFAULT_REC
 def slidersForParameters(fileName,fs = BASE_SAMPLE_FREQUENCY_HZ, duration=DEFAULT_RECORDING_DURATION_S):
 	s = np.genfromtxt(fileName,delimiter = DELIMITER)
 
-	f, t, zxx = signal.stft(s, fs, nperseg = STFT_N_SAMPLES_PER_SEG, noverlap = STFT_OVERLAP_PER_SEG//10)
+	f, t, zxx = signal.stft(s, fs, nperseg = STFT_N_SAMPLES_PER_SEG, noverlap = 0)
 	s = np.sum(abs(zxx[STFT_HPF_BIN_THRES:])**2, axis = 0)
 	# energy_no_hpf = np.sum(abs(zxx)**2, axis = 0)
 
@@ -127,7 +128,7 @@ def slidersForParameters(fileName,fs = BASE_SAMPLE_FREQUENCY_HZ, duration=DEFAUL
 	init_cutoff = np.median(s) / 2
 	init_amountOfSamples = 20
 	init_amountOfStrikes = 0.03
-	init_minTimeBetweenPeaks = 1000
+	init_minTimeBetweenPeaks = len(s) // 100
 	fig.subplots_adjust(bottom=0.21)
 
 	hor_line,vert_lines = putPeakLines(ax,s,init_cutoff,init_amountOfSamples,init_amountOfStrikes,init_minTimeBetweenPeaks)
