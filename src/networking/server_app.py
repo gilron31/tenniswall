@@ -3,9 +3,10 @@ from enum import Enum
 import struct
 import sys
 import select
+from threading import Thread
 
-
-SERVER_IDLE_MESSAGE = "\nServer is now idle.\nOptions: \nP - Pair new clients\nD - display paired clients\nR - send recording request to clients\n"
+SERVER_IDLE_MESSAGE = "\nServer is now idle.\nOptions: " \
+					  "\nD - display paired clients\nR - send recording request to clients\n"
 
 
 class ServerStates(Enum):
@@ -30,11 +31,10 @@ class TennisServer(object):
 		self.socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
 		self.inputs = [self.socket]
 		self.outputs = []
-		print(self)
 
 	def start(self):
 		self.socket.bind((self.my_ip, self.my_port))
-		self.socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+		self.socket.listen(1000)
 		self.socket.settimeout(self.SERVER_TIMEOUT_S)
 		self.state = ServerStates.IDLE
 		self.run()
@@ -52,8 +52,16 @@ class TennisServer(object):
 		if socket is self.socket:
 			# the server socket is readable when there is a new connection
 			self.acquire_new_client()
+		else:
+			self.manage_sound_packet(socket)
 
-		# TODO add logic to handle client sending data
+	def manage_sound_packet(self, socket):
+		"""
+		Will parse and extract sound packet from read ready socket
+		:param socket: socket to read sound from
+		:return: None
+		"""
+		raise NotImplementedError()
 
 	def manage_writable_socket(self, socket):
 		"""
@@ -82,10 +90,15 @@ class TennisServer(object):
 		self.clients.remove(client_to_remove)
 		socket.close()
 
-	def run(self):
-		print(self)
+	def handle_communication(self):
+		"""
+		Will handle the server side communication from incoming and outgoing messages using select
+		:note: This method supposed to run on its own thread.
+		:return: None
+		"""
 		while self.inputs:
 			readable, writable, exceptional = select.select(self.inputs, self.outputs, self.inputs)
+			print(f"Select results:(readable:{len(readable)}, writable:{len(writable)}, exceptional:{len(exceptional)})")
 
 			for readable_socket in readable:
 				self.manage_readable_socket(readable_socket)
@@ -96,6 +109,11 @@ class TennisServer(object):
 			for exceptional_socket in exceptional:
 				self.manage_exceptional_socket(exceptional_socket)
 
+	def run(self):
+		print(self)
+		communication_thread = Thread(target=self.handle_communication)
+		communication_thread.start()
+		while True:
 			if self.state == ServerStates.IDLE:
 				self.idle()
 			elif self.state == ServerStates.ERROR:
@@ -113,7 +131,6 @@ class TennisServer(object):
 			print(f"Paired Clients are: {self.clients}")
 		elif user_response == 'R':
 			self.state = ServerStates.SENDING_INSTRUCTIONS_TO_CLIENTS
-			print(f"Soon will implement requesting recordings from clients...")
 		else:
 			print(f"Invalid option chosen! - {user_response}")
 
@@ -124,6 +141,7 @@ class TennisServer(object):
 		print(f"Successfully connected to addr {addr}")
 
 	def send_instructions_to_clients(self):
+
 		try:
 			duration = int(input("How long do you want to record (s)?"))
 		except Exception as e:
