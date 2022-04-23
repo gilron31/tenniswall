@@ -27,6 +27,7 @@ class TennisServer(object):
 
 	def start(self):
 		self.socket.bind((self.my_ip, self.my_port))
+		self.socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
 		self.socket.settimeout(self.SERVER_TIMEOUT_S)
 		self.state = ServerStates.IDLE
 		self.run()

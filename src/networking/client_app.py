@@ -13,6 +13,7 @@ class ClientStates(Enum):
 
 class TennisClient(object):
 	CLIENT_TIMEOUT_S = 10
+	BASE_SAMPLE_FREQUENCY_HZ = 44100
 
 	def __init__(self, my_ip, my_port, server_ip, server_port):
 		self.my_ip = my_ip
@@ -24,6 +25,7 @@ class TennisClient(object):
 		self.duration = 0
 
 	def start(self):
+		self.socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
 		self.socket.bind((self.my_ip, self.my_port))
 		print(f"Trying to connect to server {(self.server_ip, self.server_port)}")
 		self.socket.connect((self.server_ip, self.server_port))
@@ -50,22 +52,35 @@ class TennisClient(object):
 	def idle(self):
 		try:
 			data = self.socket.recv(4)
-		except Exception as e:
+			assert len(data) == 4
+				# raise Exception("Invalid data read from server!")
+			self.duration = struct.unpack('i', data)[0]
+			print(f"recieved duration: {self.duration}")
+			self.state = ClientStates.RECORDING
+		except AssertionError:
+			print("Invalid data read from server")
+			self.state = ClientStates.IDLE
+		except Exception:
 			print("Timeout")
-		if len(data) != 4:
-			raise Exception("Invalid data read from server!")
-		self.duration = struct.unpack('i', data)[0]
-		print(f"recieved duration: {self.duration}")
-		self.state = ClientStates.RECORDING
+			self.state = ClientStates.IDLE
+
+		
 
 
 	def record_and_send(self):
+		# print(f"Recording {self.duration} seconds")
+		# rec = sd.rec(self.duration*self.BASE_SAMPLE_FREQUENCY_HZ, samplerate = self.BASE_SAMPLE_FREQUENCY_HZ, channels = 1)
+		# sd.wait()
+		# print("Done recording")
+		# rec_flattened = [x[0] for x in rec]
+
+		# data = struct.pack(f"{len(rec_flattened)}f", rec_flattened)
 		DUMMY_DATA = b'BENCHOOK'
-		data = DUMMY_DATA*self.duration
+		data = DUMMY_DATA * self.duration
 		print(f"sending {len(data)} bytes of data to server")
 		self.socket.sendall(data)
 		self.state = ClientStates.IDLE
-		
+		sd.play(rec, samplerate = self.BASE_SAMPLE_FREQUENCY_HZ)
 
 
 def main():
