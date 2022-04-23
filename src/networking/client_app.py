@@ -2,6 +2,7 @@ import socket
 from enum import Enum
 import struct
 import sys
+import sounddevice as sd
 
 class ClientStates(Enum):
 	STARTUP_UNCONNECTED = 1
@@ -20,6 +21,7 @@ class TennisClient(object):
 		self.server_ip = server_ip
 		self.state = ClientStates.STARTUP_UNCONNECTED
 		self.socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+		self.duration = 0
 
 	def start(self):
 		self.socket.bind((self.my_ip, self.my_port))
@@ -41,18 +43,29 @@ class TennisClient(object):
 			elif self.state == ClientStates.ERROR:
 				print("ERROR!")
 			elif self.state == ClientStates.RECORDING:
-				self.acquire_new_client()
+				self.record_and_send()
 			else:
 				pass
 
 	def idle(self):
 		try:
 			data = self.socket.recv(4)
-			assert len(data) == 4
-			duration = struct.unpack('i', data)
-			print(f"recieved duration: {duration}")
 		except Exception as e:
 			print("Timeout")
+		if len(data) != 4:
+			raise Exception("Invalid data read from server!")
+		self.duration = struct.unpack('i', data)[0]
+		print(f"recieved duration: {self.duration}")
+		self.state = ClientStates.RECORDING
+
+
+	def record_and_send(self):
+		DUMMY_DATA = b'BENCHOOK'
+		data = DUMMY_DATA*self.duration
+		print(f"sending {len(data)} bytes of data to server")
+		self.socket.sendall(data)
+		self.state = ClientStates.IDLE
+		
 
 
 def main():
