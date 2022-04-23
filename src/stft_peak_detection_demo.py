@@ -5,7 +5,7 @@ import sounddevice as sd
 from matplotlib.widgets import Slider, Button
 
 
-BASE_SAMPLE_FREQUENCY_HZ = 44100
+BASE_SAMPLE_FREQUENCY_HZ = 44100*8
 DEFAULT_RECORDING_DURATION_S = 10
 STFT_N_SAMPLES_PER_SEG = 100
 STFT_OVERLAP_PER_SEG = 90
