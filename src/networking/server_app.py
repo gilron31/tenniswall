@@ -112,7 +112,6 @@ class TennisServer(object):
 
 			for exceptional_socket in exceptional:
 				self.manage_exceptional_socket(exceptional_socket)
-			break
 
 	def run(self):
 		print(self)
