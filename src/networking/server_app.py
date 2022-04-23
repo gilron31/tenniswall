@@ -4,6 +4,8 @@ import struct
 import sys
 import select
 from threading import Thread
+from collections import deque
+
 
 
 SERVER_IDLE_MESSAGE = """\nServer is now idle.
@@ -35,6 +37,7 @@ class TennisServer(object):
 		self.socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
 		self.inputs = [self.socket]
 		self.outputs = []
+		self.parse_sound_ready_sockets = deque()
 
 	def start(self):
 		self.socket.bind((self.my_ip, self.my_port))
@@ -57,15 +60,23 @@ class TennisServer(object):
 			# the server socket is readable when there is a new connection
 			self.acquire_new_client()
 		else:
-			self.manage_sound_packet(socket)
+			# non server socket will be readable when sound data was sent from client socket
+			if socket not in self.parse_sound_ready_sockets:
+				self.parse_sound_ready_sockets.append(socket)
 
 	def manage_sound_packet(self, socket):
 		"""
 		Will parse and extract sound packet from read ready socket
 		:param socket: socket to read sound from
+
+		The sound packet will consist from:
+		4 bytes - length of the timestamp with the sound data
+		4 bytes - timestamp
+		all the rest - the sound data from the client
+
 		:return: None
 		"""
-		raise NotImplementedError()
+
 
 	def manage_writable_socket(self, socket):
 		"""
@@ -102,7 +113,6 @@ class TennisServer(object):
 		"""
 		while self.inputs:
 			readable, writable, exceptional = select.select(self.inputs, self.outputs, self.inputs)
-			print(f"Select results:(readable:{len(readable)}, writable:{len(writable)}, exceptional:{len(exceptional)})")
 
 			for readable_socket in readable:
 				self.manage_readable_socket(readable_socket)
@@ -119,20 +129,44 @@ class TennisServer(object):
 		communication_thread = Thread(target=self.handle_communication)
 		communication_thread.start()
 		while True:
+			print("Server state is:", self.state)
 			if self.state == ServerStates.IDLE:
 				self.idle()
 			elif self.state == ServerStates.ERROR:
 				print("ERROR!")
 			elif self.state == ServerStates.WAITING_FOR_CLIENTS_RESPONSE:
-				pass
+				client_answers = self.wait_for_clients_response()
+
 			elif self.state == ServerStates.SENDING_INSTRUCTIONS_TO_CLIENTS:
 				self.send_instructions_to_clients()
 			elif self.state == ServerStates.QUIT:
 				break
 			else:
 				pass
-		
-	
+
+	def get_client_by_socket(self, socket):
+		"""
+		Will find a connected client by its connection socket
+		:param socket: client connection socket
+		:return: Will return a tuple representing a connected client (item in self.clients list)
+		"""
+		for client in self.clients:
+			if client[0] == socket:
+				return client
+		raise ValueError(f"There is no connected client with a connection socket: {socket}")
+
+	def wait_for_clients_response(self):
+		"""
+		Will wait for all registered clients response
+		:return: a dict mapping each registered client with its response
+		"""
+		client_responses = dict()
+		while len(client_responses) < len(self.clients):
+			if len(self.parse_sound_ready_sockets) > 0:
+				client_socket = self.parse_sound_ready_sockets.pop()
+				client_responses[self.get_client_by_socket(client_socket)] = self.manage_sound_packet(client_socket)
+		return client_responses
+
 	def idle(self):
 		user_response = input(SERVER_IDLE_MESSAGE).upper()
 		if user_response == 'D':
@@ -162,7 +196,7 @@ class TennisServer(object):
 		for conn, addr in self.clients:
 			print(f"Sending duration {duration} to {addr}")
 			conn.sendall(struct.pack('i', duration))
-		self.state = ServerStates.IDLE
+		self.state = ServerStates.WAITING_FOR_CLIENTS_RESPONSE
 
 
 def main():
