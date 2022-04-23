@@ -68,19 +68,19 @@ class TennisClient(object):
 
 
 	def record_and_send(self):
-		# print(f"Recording {self.duration} seconds")
-		# rec = sd.rec(self.duration*self.BASE_SAMPLE_FREQUENCY_HZ, samplerate = self.BASE_SAMPLE_FREQUENCY_HZ, channels = 1)
-		# sd.wait()
-		# print("Done recording")
-		# rec_flattened = [x[0] for x in rec]
+		print(f"Recording {self.duration} seconds")
+		rec = sd.rec(self.duration*self.BASE_SAMPLE_FREQUENCY_HZ, samplerate = self.BASE_SAMPLE_FREQUENCY_HZ, channels = 1)
+		sd.wait()
+		print("Done recording")
+		rec_flattened = [x[0] for x in rec]
 
-		# data = struct.pack(f"{len(rec_flattened)}f", rec_flattened)
-		DUMMY_DATA = b'BENCHOOK'
-		data = DUMMY_DATA * self.duration
+		data = struct.pack(f"{len(rec_flattened)}f", *rec_flattened)
+		# DUMMY_DATA = b'BENCHOOK'
+		# data = DUMMY_DATA * self.duration
 		print(f"sending {len(data)} bytes of data to server")
 		self.socket.sendall(data)
 		self.state = ClientStates.IDLE
-		# sd.play(rec, samplerate = self.BASE_SAMPLE_FREQUENCY_HZ)
+		sd.play(rec, samplerate = self.BASE_SAMPLE_FREQUENCY_HZ)
 
 
 def main():

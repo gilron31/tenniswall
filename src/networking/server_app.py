@@ -3,7 +3,13 @@ from enum import Enum
 import struct
 import sys
 
-SERVER_IDLE_MESSAGE = "\nServer is now idle.\nOptions: \nP - Pair new clients\nD - display paired clients\nR - send recording request to clients\n"
+SERVER_IDLE_MESSAGE = """\nServer is now idle.
+Options: 
+P - Pair new clients
+D - display paired clients
+R - send recording request to clients
+Q - Close socket and quit
+"""
 
 class ServerStates(Enum):
 	STARTUP = 1
@@ -12,6 +18,7 @@ class ServerStates(Enum):
 	WAITING_FOR_CLIENTS_RESPONSE = 4
 	WAITING_FOR_CLIENTS_BRINGUP = 5
 	SENDING_INSTRUCTIONS_TO_CLIENTS = 6
+	QUIT = 7
 
 class TennisServer(object):
 	SERVER_TIMEOUT_S = 10
@@ -49,6 +56,8 @@ class TennisServer(object):
 				pass
 			elif self.state == ServerStates.SENDING_INSTRUCTIONS_TO_CLIENTS:
 				self.send_instructions_to_clients()
+			elif self.state == ServerStates.QUIT:
+				break
 			else:
 				pass
 	
@@ -62,6 +71,10 @@ class TennisServer(object):
 		elif user_response == 'R':
 			self.state = ServerStates.SENDING_INSTRUCTIONS_TO_CLIENTS
 			print(f"Soon will implement requesting recordings from clients...")
+		elif user_response == 'Q':
+			print("Closing socket")
+			self.socket.close()
+			self.state = ServerStates.QUIT
 		else:
 			print("Invalid option chosen!")
 
