@@ -1,6 +1,7 @@
 import socket 
 from enum import Enum
 import struct
+import sys
 
 SERVER_IDLE_MESSAGE = "\nServer is now idle.\nOptions: \nP - Pair new clients\nD - display paired clients\nR - send recording request to clients\n"
 
@@ -86,3 +87,14 @@ class TennisServer(object):
 			conn.sendall(struct.pack('i', duration))
 		self.state = ServerStates.IDLE
 
+
+def main():
+	if(len(sys.argv) != 3):
+		print("Usage: server_app.py <my_ip> <my_port> ")
+		return
+	ts = TennisServer(sys.argv[1], int(sys.argv[2]))
+	ts.start()
+
+
+if __name__ == '__main__':
+	main()

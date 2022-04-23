@@ -2,13 +2,12 @@ import sys
 import server_app
 
 
-
-
-
 def main():
-	# s = server_app.TennisServer('192.168.68.116', 4000)
-	s = server_app.TennisServer('', 4000)
-	s.start()
+	if(len(sys.argv) != 3):
+		print("Usage: server_app.py <my_ip> <my_port> ")
+		return
+	ts = TennisServer(sys.argv[1], int(sys.argv[2])))
+	ts.start()
 
 
 if __name__ == '__main__':
