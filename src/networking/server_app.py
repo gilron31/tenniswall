@@ -2,7 +2,7 @@ import socket
 from enum import Enum
 import struct
 
-SERVER_IDLE_MESSAGE = "\nServer is now idle.\nOptions: \nL - listen to new clients\nD - display paired clients\nR - send recording request to clients\n"
+SERVER_IDLE_MESSAGE = "\nServer is now idle.\nOptions: \nP - Pair new clients\nD - display paired clients\nR - send recording request to clients\n"
 
 class ServerStates(Enum):
 	STARTUP = 1
@@ -13,6 +13,8 @@ class ServerStates(Enum):
 	SENDING_INSTRUCTIONS_TO_CLIENTS = 6
 
 class TennisServer(object):
+	SERVER_TIMEOUT_S = 10
+
 	"""docstring for tennis_server"""
 	def __init__(self, my_ip, my_port):
 		self.my_ip = my_ip
@@ -24,6 +26,7 @@ class TennisServer(object):
 
 	def start(self):
 		self.socket.bind((self.my_ip, self.my_port))
+		self.socket.settimeout(self.SERVER_TIMEOUT_S)
 		self.state = ServerStates.IDLE
 		self.run()
 
@@ -37,7 +40,7 @@ class TennisServer(object):
 			if self.state == ServerStates.IDLE:	
 				self.idle()
 			elif self.state == ServerStates.ERROR:
-				pass
+				print("ERROR!")
 			elif self.state == ServerStates.WAITING_FOR_CLIENTS_BRINGUP:
 				self.acquire_new_client()
 			elif self.state == ServerStates.WAITING_FOR_CLIENTS_RESPONSE:
@@ -49,7 +52,7 @@ class TennisServer(object):
 	
 	def idle(self):
 		user_response = input(SERVER_IDLE_MESSAGE)
-		if user_response == 'L':
+		if user_response == 'P':
 			self.state = ServerStates.WAITING_FOR_CLIENTS_BRINGUP
 			pass
 		elif user_response == 'D':
@@ -63,9 +66,12 @@ class TennisServer(object):
 	def acquire_new_client(self):
 		print("Listening to new client")
 		self.socket.listen()
-		conn, addr = self.socket.accept()
-		self.clients.append((conn, addr))
-		print(f"Successfully connected to addr {addr}")
+		try:
+			conn, addr = self.socket.accept()
+			self.clients.append((conn, addr))
+			print(f"Successfully connected to addr {addr}")
+		except Exception as e:
+			print("Timeout exceeded, did not recieve connections")
 		self.state = ServerStates.IDLE
 
 
