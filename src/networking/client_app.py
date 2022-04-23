@@ -80,7 +80,7 @@ class TennisClient(object):
 		print(f"sending {len(data)} bytes of data to server")
 		self.socket.sendall(data)
 		self.state = ClientStates.IDLE
-		sd.play(rec, samplerate = self.BASE_SAMPLE_FREQUENCY_HZ)
+		# sd.play(rec, samplerate = self.BASE_SAMPLE_FREQUENCY_HZ)
 
 
 def main():
